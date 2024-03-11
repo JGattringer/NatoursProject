@@ -1,30 +1,11 @@
-// const fs = require('fs');
+/**
+ * Summary:
+ * This file contains controller functions for handling tours, including getting all tours, getting a specific tour, creating a new tour, updating a tour, and deleting a tour.
+ */
+
 const Tour = require('../models/tourModel');
+const APIFeatures = require('../utils/apiFeatures');
 
-// const tours = JSON.parse(
-//   fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`),
-// );
-
-// exports.checkID = (req, res, next, value) => {
-//   console.log(`Tour current ID: ${value}`);
-//   if (req.params.id * 1 > tours.length) {
-//     return res.status(404).json({
-//       status: 'fail',
-//       message: 'Invalid ID',
-//     });
-//   }
-//   next();
-// };
-
-// exports.checkBody = (req, res, next) => {
-//   if (!req.body.name || !req.body.price) {
-//     return res.status(400).json({
-//       status: 'fail',
-//       message: 'Missing name or price',
-//     });
-//   }
-//   next();
-// };
 exports.aliasTopTours = (req, res, next) => {
   req.query.limit = '5';
   req.query.sort = '-ratingsAverage,price';
@@ -33,62 +14,16 @@ exports.aliasTopTours = (req, res, next) => {
 };
 
 exports.getAllTours = async (req, res) => {
-  // console.log(req.requestTime);
   try {
-    // console.log(req.query)
+    // 1) EXECUTE THE QUERY
+    const features = new APIFeatures(Tour.find(), req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .pagination();
+    const tours = await features.query;
 
-    // 1) BUILD THE QUERY
-
-    // 1.1) FILTERING
-    const queryObj = { ...req.query };
-    const excludedFields = ['page', 'sort', 'limit', 'fields'];
-    excludedFields.forEach((el) => delete queryObj[el]);
-
-    // 1.2) ADVANCED FILTERING
-    let queryString = JSON.stringify(queryObj);
-    queryString = queryString.replace(
-      /\b(gte|gt|lte|lt)\b/g,
-      (match) => `$${match}`,
-    );
-    // console.log(JSON.parse(queryString));
-
-    let query = Tour.find(JSON.parse(queryString));
-
-    // 2) SORTING
-    if (req.query.sort) {
-      const sortBy = req.query.sort.split(',').join(' ');
-      query = query.sort(sortBy);
-      // sort("price ratingsAverage")
-    } else {
-      query = query.sort('-createdAt');
-    }
-
-    // 3) FIELDS LIMITING
-    if (req.query.fields) {
-      const fields = req.query.fields.split(',').join(' ');
-      query = query.select(fields);
-    } else {
-      query = query.select('-__v');
-    }
-
-    // 4) PAGINATION
-    const page = req.query.page * 1 || 1;
-    const limit = req.query.limit * 1 || 100;
-    const skip = (page - 1) * limit;
-
-    query = query.skip(skip).limit(limit);
-
-    if (req.query.page) {
-      const numberOfTours = await Tour.countDocuments();
-      if (skip >= numberOfTours) throw new Error('This page does not exist!');
-    }
-
-    // 5) EXECUTE THE QUERY
-    const tours = await query;
-
-    // const tours = await Tour.find().whre("duration").equals(5).where("difficulty").equals("easy")
-
-    // 6) SEND RESPONSE
+    // 2) SEND RESPONSE
     res.status(200).json({
       status: 'success',
       results: tours.length,
@@ -108,7 +43,6 @@ exports.getAllTours = async (req, res) => {
 exports.getTour = async (req, res) => {
   try {
     const tour = await Tour.findById(req.params.id);
-    // Tour.findOn({ _id: req.params.id})
 
     res.status(200).json({
       status: 'success',
@@ -125,8 +59,6 @@ exports.getTour = async (req, res) => {
 };
 
 exports.createTour = async (req, res) => {
-  // const newTour = Tour.create({});
-  //newTour.save()
   try {
     const newTour = await Tour.create(req.body);
 

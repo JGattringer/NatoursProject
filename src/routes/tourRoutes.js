@@ -1,3 +1,5 @@
+// JavaScript code for defining routes related to tours using Express framework
+
 const express = require('express');
 const tourController = require('../controllers/toursController');
 

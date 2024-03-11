@@ -1,4 +1,5 @@
-// toda a config do projeto e feita no app.js
+// This file (app.js) sets up a basic Express server for a project. It includes middleware for logging, parsing JSON, serving static files, and custom middleware for logging request time. It also defines routes for tours and users.all the config of the project is made on app.js
+
 const express = require('express');
 const morgan = require('morgan');
 const app = express();

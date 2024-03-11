@@ -1,3 +1,5 @@
+// JavaScript code for defining routes related to users using Express framework
+
 const express = require('express');
 const userController = require('./../controllers/userController');
 

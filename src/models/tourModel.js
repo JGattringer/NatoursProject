@@ -1,6 +1,8 @@
+// This is a JavaScript file defining a Mongoose schema for a tour model
+
 const mongoose = require('mongoose');
 
-// DEFININDO NOSSO SCHEMA
+// DEFINING THE SCHEMA
 const tourSchema = new mongoose.Schema({
   name: {
     type: String,
