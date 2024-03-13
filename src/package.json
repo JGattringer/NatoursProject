@@ -22,7 +22,9 @@
     "express": "^4.18.3",
     "mongoose": "^5.13.22",
     "morgan": "^1.10.0",
-    "prettier": "^3.2.5"
+    "prettier": "^3.2.5",
+    "slugify": "^1.6.6",
+    "validator": "^13.11.0"
   },
   "devDependencies": {
     "eslint-config-node": "^4.1.0"
