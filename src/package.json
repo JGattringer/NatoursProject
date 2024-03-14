@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start:dev": "nodemon server.js",
-    "start:prod": "set NODE_ENV=production&& nodemon server.js"
+    "start:prod": "set NODE_ENV=production&& nodemon server.js",
+    "debug": "nodemon server.js"
   },
   "author": "joao gattringer",
   "license": "ISC",
