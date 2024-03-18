@@ -1,7 +1,7 @@
 // JavaScript code for defining routes related to tours using Express framework
-
 const express = require('express');
 const tourController = require('../controllers/toursController');
+const authenticationController = require('../controllers/authenticationController');
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ router
 
 router
   .route('/')
-  .get(tourController.getAllTours)
+  .get(authenticationController.protect, tourController.getAllTours)
   .post(tourController.createTour);
 
 router
