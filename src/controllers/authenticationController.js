@@ -4,10 +4,23 @@ const catchAsync = require('../utils/catchAsync');
 const User = require('../models/userModel');
 const AppError = require('../utils/appError');
 const sendEmail = require('../utils/email');
+const crypto = require('crypto');
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
+  });
+};
+
+const createSendToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
+
+  res.status(statusCode).json({
+    status: 'success',
+    token,
+    data: {
+      user: user,
+    },
   });
 };
 
@@ -19,17 +32,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     password: req.body.password,
     passwordconfirm: req.body.passwordconfirm,
   });
-
-  // CREATE JWT TOKEN FOR VERIFICATION OF USER FOR SING IN
-  const token = signToken(newUser._id);
-
-  res.status(201).json({
-    status: 'success',
-    token,
-    data: {
-      user: newUser,
-    },
-  });
+  createSendToken(newUser, 201, res);
 });
 
 // login the user/check credentials
@@ -50,11 +53,7 @@ exports.login = catchAsync(async (req, res, next) => {
   }
 
   // 3) IF ALL GOOD SEND TOKEN TO CLIENT
-  const token = signToken(user._id);
-  res.status(200).json({
-    status: 'sucess',
-    token: token,
-  });
+  createSendToken(user, 200, res);
 });
 
 // Protect the rout for only logged in users have access
@@ -105,7 +104,7 @@ exports.restrictTo = (...roles) => {
   return (req, res, next) => {
     // roles ["admin", "lead-guide"]
 
-    if (roles.includes(req.user.role)) {
+    if (!roles.includes(req.user.role)) {
       return next(
         new AppError('You do not have permission to perform this action', 403),
       );
@@ -156,4 +155,51 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   }
 });
 
-exports.resetPassword = (req, res, next) => {};
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  // 1) get user based on the token
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: {
+      $gt: Date.now(),
+    },
+  });
+
+  // 2) if token has not expired, and there is a user, set the new password
+  if (!user) {
+    return next(new AppError('Token is invalid or it has expired!', 400));
+  }
+
+  user.password = req.body.password;
+  user.passwordconfirm = req.body.passwordconfirm;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  // 3) update the changed password property for current user
+
+  // 4) log the user in, send JWT
+  createSendToken(user, 200, res);
+});
+
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  // 1) Get iser from collection
+  const user = await User.findById(req.user.id).select('+password');
+
+  // 2) Check if POSTed current password is correct
+  if (!(await user.correctPassword(req.body.passwordcurrent, user.password))) {
+    return next(new AppError('Youe current password is wrong!', 401));
+  }
+
+  // 3) if so, update password
+  user.password = req.body.password;
+  user.passwordconfirm = req.body.passwordconfirm;
+  await user.save();
+
+  // 4) log user in. send jwt
+  createSendToken(user, 200, res);
+});
