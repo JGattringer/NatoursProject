@@ -2,20 +2,61 @@
 
 const express = require('express');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
 
 const AppError = require('./utils/appError');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
 const globalErrorHandler = require('./controllers/errorController');
-
+const { mongo } = require('mongoose');
+const reviewRouter = require('./routes/reviewRoutes');
 const app = express();
 
-// 1) MIDDLEWARE
+// 1) GLOBAL MIDDLEWARE
+
+// set security HTTP headers
+app.use(helmet()); // aways at the start for safety
+
+// DEVELOPMENT LOGGIN
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
+// limit request from same API
+const limiter = rateLimit({
+  max: 100,
+  windowMs: 60 * 60 * 1000,
+  message: 'too many requests from this IP, please try again in a hour!',
+});
+app.use('/api', limiter);
 
-app.use(express.json());
+// body parser, reading data from the body into req.body
+app.use(express.json({ limit: '10kb' }));
+
+// data snitization against NoSQL query injection
+app.use(mongoSanitize());
+
+// data sanitization agains XXS
+app.use(xss());
+
+// prevent parameter pollution
+app.use(
+  hpp({
+    whitelist: [
+      'duration',
+      'ratingsQuantity',
+      'ratingsAvarage',
+      'maxgroupsize',
+      'difficulty',
+      'price',
+    ],
+  }),
+);
+
+// serving static files
 app.use(express.static(`${__dirname}/public`));
 
 // creating our own middleware
@@ -24,6 +65,7 @@ app.use(express.static(`${__dirname}/public`));
 //   next();
 // });
 
+// test middleware
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
   // console.log(req.headers);
@@ -33,6 +75,7 @@ app.use((req, res, next) => {
 // 2) ROUTES
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/reviews', reviewRouter);
 
 // HANDLING ROUTE NOT FOUND - should aways be the last one
 app.all('*', (req, res, next) => {
